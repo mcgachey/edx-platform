@@ -11,7 +11,7 @@ from mock import patch
 
 from django.conf import settings
 from django.contrib.auth.models import User
-from django.test import TestCase
+from django.test import TestCase, TransactionTestCase
 from request_cache.middleware import RequestCache
 
 from xmodule.contentstore.django import _CONTENTSTORE
@@ -181,14 +181,18 @@ TEST_DATA_MONGO_MODULESTORE = mixed_store_config(mkdtemp(), {}, include_xml=Fals
 TEST_DATA_MOCK_MODULESTORE = mixed_store_config(mkdtemp(), {}, include_xml=False)
 
 
-class ModuleStoreTestCase(TestCase):
+class ModuleStoreTransactionTestCase(TransactionTestCase):
     """
-    Subclass for any test case that uses a ModuleStore.
+    Subclass for a transaction test case that uses a ModuleStore.
     Ensures that the ModuleStore is cleaned before/after each test.
+    Use this test class to test the effects of commit and rollback
+    in a ModuleStore.
+    A TransactionTestCase resets the database before the test runs
+    by truncating all tables and reloading initial data.
 
     Usage:
 
-        1. Create a subclass of `ModuleStoreTestCase`
+        1. Create a subclass of `ModuleStoreTransactionTestCase`
         2. Use Django's @override_settings decorator to use
            the desired modulestore configuration.
 
@@ -197,7 +201,7 @@ class ModuleStoreTestCase(TestCase):
                MIXED_CONFIG = mixed_store_config(data_dir, mappings)
 
                @override_settings(MODULESTORE=MIXED_CONFIG)
-               class FooTest(ModuleStoreTestCase):
+               class FooTest(ModuleStoreTransactionTestCase):
                    # ...
 
         3. Use factories (e.g. `CourseFactory`, `ItemFactory`) to populate
@@ -227,7 +231,7 @@ class ModuleStoreTestCase(TestCase):
         Args:
             create_user - specifies whether or not to create a test User.  Default is True.
         """
-        super(ModuleStoreTestCase, self).setUp()
+        super(ModuleStoreTransactionTestCase, self).setUp()
 
         self.store = modulestore()
 
@@ -302,7 +306,7 @@ class ModuleStoreTestCase(TestCase):
         # which will cause them to be re-created
         # the next time they are accessed.
         clear_existing_modulestores()
-        TestCase.setUpClass()
+        TransactionTestCase.setUpClass()
 
     def _pre_setup(self):
         """
@@ -312,7 +316,7 @@ class ModuleStoreTestCase(TestCase):
         self.drop_mongo_collections()
 
         # Call superclass implementation
-        super(ModuleStoreTestCase, self)._pre_setup()
+        super(ModuleStoreTransactionTestCase, self)._pre_setup()
 
     def _post_teardown(self):
         """
@@ -328,7 +332,7 @@ class ModuleStoreTestCase(TestCase):
         RequestCache().clear_request_cache()
 
         # Call superclass implementation
-        super(ModuleStoreTestCase, self)._post_teardown()
+        super(ModuleStoreTransactionTestCase, self)._post_teardown()
 
     def create_sample_course(self, org, course, run, block_info_tree=None, course_fields=None):
         """
@@ -428,3 +432,16 @@ class ModuleStoreTestCase(TestCase):
                 fields={"display_name": "Syllabus"},
             )
         return self.toy_loc
+
+
+class ModuleStoreTestCase(ModuleStoreTransactionTestCase, TestCase):
+    """
+    Subclass for simple test case that uses ModuleStore.
+    This will change Transaction level data cleanup for tests back to normal.
+    A TestCase encloses the test code in a database transaction that is rolled
+    back at the end of the test.
+    Use this test class as default to run test which use a ModuleStore.
+
+    Usage: same as ModuleStoreTransactionTestCase
+    """
+    pass

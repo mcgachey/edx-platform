@@ -6,7 +6,7 @@ from django.test.client import RequestFactory
 
 from student.models import Registration
 
-from django.test import TestCase
+from django.test import TransactionTestCase
 
 
 def get_request_for_user(user):
@@ -22,7 +22,7 @@ def get_request_for_user(user):
     return request
 
 
-class LoginEnrollmentTestCase(TestCase):
+class LoginEnrollmentTestCase(TransactionTestCase):
     """
     Provides support for user creation,
     activation, login, and course enrollment.

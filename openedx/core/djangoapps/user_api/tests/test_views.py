@@ -17,7 +17,6 @@ import mock
 from xmodule.modulestore.tests.factories import CourseFactory
 
 from student.tests.factories import UserFactory
-from unittest import SkipTest
 from django_comment_common import models
 from opaque_keys.edx.locations import SlashSeparatedCourseKey
 from third_party_auth.tests.testutil import simulate_running_pipeline

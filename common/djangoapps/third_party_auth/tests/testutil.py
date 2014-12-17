@@ -5,9 +5,9 @@ Used by Django and non-Django tests; must not have Django deps.
 """
 
 from contextlib import contextmanager
-import unittest
 import mock
 
+from django.test import TransactionTestCase
 from third_party_auth import provider
 
 
@@ -23,7 +23,7 @@ class FakeDjangoSettings(object):
             setattr(self, key, value)
 
 
-class TestCase(unittest.TestCase):
+class TestCase(TransactionTestCase):
     """Base class for auth test cases."""
 
     # Allow access to protected methods (or module-protected methods) under
