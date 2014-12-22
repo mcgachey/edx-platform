@@ -73,6 +73,12 @@ from courseware.courses import course_image_url, get_course_about_section
               link_end='</a>',
             )}
           </p>
+          % elif redeem_code_error:
+          <p class="enrollment-text">
+            ${_(
+              "There was an error processing your redeem code."
+            )}
+          </p>
           % else:
           <p class="enrollment-text">
             ${_(
