@@ -59,6 +59,7 @@ class TestVideoAPITestCase(MobileAPITestCase):
             display_name=u"split test unit"
         )
 
+
         self.edx_video_id = 'testing-123'
 
         self.video_url = 'http://val.edx.org/val/video.mp4'
@@ -182,6 +183,7 @@ class TestVideoSummaryList(TestVideoAPITestCase, MobileAuthTestMixin, MobileEnro
         course_outline = self.api_response().data
         self.assertEqual(len(course_outline), 1)
         self.assertEqual(course_outline[0]['path'][2]['name'], self.nameless_unit.location.block_id)
+
 
     def test_with_video_in_sub_section(self):
         """
