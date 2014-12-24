@@ -40,6 +40,7 @@ class @MarkdownEditingDescriptor extends XModule.Descriptor
     })
     if text
       @xml_editor.setValue(text)
+    $(@xml_editor.getWrapperElement()).toggleClass("CodeMirror-advanced");
     @setCurrentEditor(@xml_editor)
 
   ###

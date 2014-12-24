@@ -79,6 +79,7 @@ Write a persuasive essay to a newspaper reflecting your views on censorship in l
     })
     if text
       @xml_editor.setValue(text)
+    $(@xml_editor.getWrapperElement()).toggleClass("CodeMirror-advanced");
     @setCurrentEditor(@xml_editor)
 
   ###
