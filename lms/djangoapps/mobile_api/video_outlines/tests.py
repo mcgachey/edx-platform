@@ -52,14 +52,12 @@ class TestVideoAPITestCase(MobileAPITestCase):
             category="vertical",
             display_name=u"split test vertical\u03a9",
         )
-<<<<<<< HEAD
+
         self.split_test = ItemFactory.create(
             parent_location=self.split_unit.location,
             category="split_test",
             display_name=u"split test unit"
         )
-=======
->>>>>>> handles videos nested in a sequence
 
         self.edx_video_id = 'testing-123'
 
