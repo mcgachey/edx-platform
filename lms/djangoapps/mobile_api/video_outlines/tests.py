@@ -184,7 +184,6 @@ class TestVideoSummaryList(TestVideoAPITestCase, MobileAuthTestMixin, MobileEnro
         self.assertEqual(len(course_outline), 1)
         self.assertEqual(course_outline[0]['path'][2]['name'], self.nameless_unit.location.block_id)
 
-
     def test_with_video_in_sub_section(self):
         """
         Tests a non standard xml format where a video is underneath a sequential

@@ -5,7 +5,6 @@ from rest_framework.reverse import reverse
 
 from courseware.access import has_access
 
-
 from edxval.api import (
     get_video_info_for_course_and_profile, ValInternalError
 )
