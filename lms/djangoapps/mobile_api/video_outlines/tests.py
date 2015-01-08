@@ -207,6 +207,7 @@ class TestVideoSummaryList(TestVideoAPITestCase, MobileAuthTestMixin, MobileEnro
         self.assertIn(
             u'courseware/test_factory_section_omega_%CE%A9/test_subsection_omega_%CE%A9',
             section_url
+
         )
         self.assertTrue(section_url)
         self.assertTrue(unit_url)

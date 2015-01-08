@@ -65,7 +65,6 @@ class BlockOutline(object):
             block_list = list(reversed(block_path))
             block_count = len(block_list)
 
-
             chapter = block_list[1] if block_count > 1 else None
             section = block_list[2] if block_count > 2 else None
             position = ""
