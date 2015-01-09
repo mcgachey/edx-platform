@@ -266,27 +266,25 @@ class CourseWithContentGroupsTest(StaffViewTest):
             </problem>
         """)
 
+        self.alpha_text = "VISIBLE TO ALPHA"
+        self.beta_text = "VISIBLE TO BETA"
+        self.everyone_text = "VISIBLE TO EVERYONE"
+
         course_fixture.add_children(
             XBlockFixtureDesc('chapter', 'Test Section').add_children(
                 XBlockFixtureDesc('sequential', 'Test Subsection').add_children(
-                    XBlockFixtureDesc(
-                        'problem', 'Visible to alpha', data=problem_data, metadata={"group_access": {0: [0]}}
-                    ),
-                    XBlockFixtureDesc(
-                        'problem', 'Visible to beta', data=problem_data, metadata={"group_access": {0: [1]}}
-                    ),
-                    XBlockFixtureDesc('problem', 'Visible to everyone', data=problem_data)
+                    XBlockFixtureDesc('vertical', 'Test Unit').add_children(
+                        XBlockFixtureDesc(
+                            'problem', self.alpha_text, data=problem_data, metadata={"group_access": {0: [0]}}
+                        ),
+                        XBlockFixtureDesc(
+                            'problem', self.beta_text, data=problem_data, metadata={"group_access": {0: [1]}}
+                        ),
+                        XBlockFixtureDesc('problem', self.everyone_text, data=problem_data)
+                    )
                 )
             )
         )
-
-    def _verify_visible_problems(self, expected_items):
-        """
-        Verify that the expected problems are visible.
-        """
-        course_nav = CourseNavPage(self.browser)
-        actual_items = course_nav.sequence_items
-        self.assertItemsEqual(expected_items, actual_items)
 
     def test_staff_sees_all_problems(self):
         """
@@ -297,7 +295,9 @@ class CourseWithContentGroupsTest(StaffViewTest):
         Then I see all the problems, regardless of their group_access property
         """
         self._goto_staff_page()
-        self._verify_visible_problems(['Visible to alpha', 'Visible to beta', 'Visible to everyone'])
+        self.assertTrue(
+            self.courseware_page.xblock_components_contain_text([self.alpha_text, self.beta_text, self.everyone_text])
+        )
 
     def test_student_not_in_content_group(self):
         """
@@ -310,7 +310,9 @@ class CourseWithContentGroupsTest(StaffViewTest):
         """
         course_page = self._goto_staff_page()
         course_page.set_staff_view_mode('Student')
-        self._verify_visible_problems(['Visible to everyone'])
+        self.assertTrue(
+            self.courseware_page.xblock_components_contain_text([self.everyone_text])
+        )
 
     def test_as_student_in_alpha(self):
         """
@@ -323,7 +325,9 @@ class CourseWithContentGroupsTest(StaffViewTest):
         """
         course_page = self._goto_staff_page()
         course_page.set_staff_view_mode('Student in alpha')
-        self._verify_visible_problems(['Visible to alpha', 'Visible to everyone'])
+        self.assertTrue(
+            self.courseware_page.xblock_components_contain_text([self.alpha_text, self.everyone_text])
+        )
 
     def test_as_student_in_beta(self):
         """
@@ -336,4 +340,6 @@ class CourseWithContentGroupsTest(StaffViewTest):
         """
         course_page = self._goto_staff_page()
         course_page.set_staff_view_mode('Student in beta')
-        self._verify_visible_problems(['Visible to beta', 'Visible to everyone'])
+        self.assertTrue(
+            self.courseware_page.xblock_components_contain_text([self.beta_text, self.everyone_text])
+        )

@@ -34,11 +34,18 @@ class CoursewarePage(CoursePage):
         return len(self.q(css=self.subsection_selector))
 
     @property
+    def xblock_components(self):
+        """
+        Return the xblock components within the unit on the page.
+        """
+        return self.q(css=self.xblock_component_selector)
+
+    @property
     def num_xblock_components(self):
         """
         Return the number of rendered xblocks within the unit on the page
         """
-        return len(self.q(css=self.xblock_component_selector))
+        return len(self.xblock_components)
 
     def xblock_component_type(self, index=0):
         """
@@ -62,6 +69,22 @@ class CoursewarePage(CoursePage):
 
         """
         return self.q(css=self.xblock_component_selector).attrs('innerHTML')[index].strip()
+
+    def xblock_components_contain_text(self, expected_components_text):
+        """
+        Iterates through all xblock components on the page and verifies that each
+        contains its expected text (note that they can also contain additional text).
+
+        Return False if either there are an incorrect number of components on the page,
+        or at least one of them does not contain the expected text
+        """
+        components = self.xblock_components
+        if len(expected_components_text) != len(components):
+            return False
+        for index, expected_text in enumerate(expected_components_text):
+            if expected_text not in components[index].text:
+                return False
+        return True
 
     def tooltips_displayed(self):
         """
