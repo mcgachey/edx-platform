@@ -271,8 +271,8 @@ def _has_group_access(descriptor, user, course_key):
     This function returns a boolean indicating whether or not `user` has
     sufficient group memberships to "load" a block (the `descriptor`)
     """
-    if len(descriptor.user_partitions) == 0:
-        # short circuit the process, since there are no defined user partitions
+    if isinstance(descriptor, CourseDescriptor) or len(descriptor.user_partitions) == 0:
+        # short circuit the process when group_access is not relevant
         return True
 
     # use merged_group_access which takes group access on the block's
