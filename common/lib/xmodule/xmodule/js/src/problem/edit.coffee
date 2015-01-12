@@ -40,8 +40,10 @@ class @MarkdownEditingDescriptor extends XModule.Descriptor
     })
     if text
       @xml_editor.setValue(text)
-    $(@xml_editor.getWrapperElement()).toggleClass("CodeMirror-advanced");
     @setCurrentEditor(@xml_editor)
+    $(@xml_editor.getWrapperElement()).toggleClass("CodeMirror-advanced");
+    # Need to refresh to get line numbers to display properly.
+    @xml_editor.refresh()
 
   ###
   User has clicked to show the XML editor. Before XML editor is swapped in,
@@ -54,9 +56,8 @@ class @MarkdownEditingDescriptor extends XModule.Descriptor
       @toggleCheatsheetVisibility()
     if @confirmConversionToXml()
       @createXMLEditor(MarkdownEditingDescriptor.markdownToXml(@markdown_editor.getValue()))
-      # Need to refresh to get line numbers to display properly (and put cursor position to 0)
+      # Put cursor position to 0.
       @xml_editor.setCursor(0)
-      @xml_editor.refresh()
       # Hide markdown-specific toolbar buttons
       $(@element.find('.editor-bar')).hide()
 

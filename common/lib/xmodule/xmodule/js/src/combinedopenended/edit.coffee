@@ -79,8 +79,10 @@ Write a persuasive essay to a newspaper reflecting your views on censorship in l
     })
     if text
       @xml_editor.setValue(text)
-    $(@xml_editor.getWrapperElement()).toggleClass("CodeMirror-advanced");
     @setCurrentEditor(@xml_editor)
+    $(@xml_editor.getWrapperElement()).toggleClass("CodeMirror-advanced");
+    # Need to refresh to get line numbers to display properly.
+    @xml_editor.refresh()
 
   ###
   User has clicked to show the XML editor. Before XML editor is swapped in,
@@ -93,9 +95,8 @@ Write a persuasive essay to a newspaper reflecting your views on censorship in l
       @toggleCheatsheetVisibility()
     if @confirmConversionToXml()
       @createXMLEditor(OpenEndedMarkdownEditingDescriptor.markdownToXml(@markdown_editor.getValue()))
-      # Need to refresh to get line numbers to display properly (and put cursor position to 0)
+      # Put cursor position to 0.
       @xml_editor.setCursor(0)
-      @xml_editor.refresh()
       # Hide markdown-specific toolbar buttons
       $(@element.find('.editor-bar')).hide()
 
