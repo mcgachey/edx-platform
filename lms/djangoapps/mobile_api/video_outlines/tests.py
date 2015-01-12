@@ -282,7 +282,6 @@ class TestVideoSummaryList(TestVideoAPITestCase, MobileAuthTestMixin, MobileEnro
         self.assertEqual(len(course_outline[0]['path']), 2)
         section_url = course_outline[0]["section_url"]
         unit_url = course_outline[0]["unit_url"]
-        print type(section_url)
         self.assertIn(
             u'courseware/test_factory_section_omega_%CE%A9/test_subsection_omega_%CE%A9',
             section_url
