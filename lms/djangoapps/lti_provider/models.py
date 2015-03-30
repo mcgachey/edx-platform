@@ -1,3 +1,8 @@
 from django.db import models
 
-# Create your models here.
+class LtiConsumer(models.Model):
+    key = models.CharField(max_length=32, unique=True, db_index=True)
+    secret = models.CharField(max_length=32, unique=True, db_index=True)
+
+    def __unicode__(self):
+        return self.key + ":" + self.secret
