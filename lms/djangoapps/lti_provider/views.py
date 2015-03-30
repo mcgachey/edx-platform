@@ -1,6 +1,7 @@
 import courseware
 from django.conf import settings
 from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseForbidden
+import oauth2
 
 
 def lti_launch(request, course_id, chapter=None, section=None, position=None):
@@ -14,12 +15,35 @@ def lti_launch(request, course_id, chapter=None, section=None, position=None):
     if not verify_oauth_signature(request, lti_parameters):
         return HttpResponseForbidden()
 
-    print lti_parameters["roles"]
-
     return HttpResponse("TODO: Render refactored courseware view")
 
 
+# TODO: Check that signature method is SHA1
 def verify_oauth_signature(request, lti_parameters):
+    try:
+        method = u'POST'
+        url = request.build_absolute_uri()
+        headers = request.META
+        parameters = request.POST.copy()
+
+        oauth_request = oauth2.Request.from_request(
+            method,
+            url,
+            headers=headers,
+            parameters=parameters)
+
+        oauth_consumer = oauth2.Consumer('key', 'secret')
+
+        oauth_server = oauth2.Server()
+        signature_method = oauth2.SignatureMethod_HMAC_SHA1()
+        oauth_server.add_signature_method(signature_method)
+
+        oauth_server.verify_request(oauth_request, oauth_consumer, {})
+
+    except oauth2.MissingSignature, e:
+        raise e
+
+    # Signature was valid
     return True
 
 
