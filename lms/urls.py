@@ -616,8 +616,12 @@ if settings.FEATURES.get('CERTIFICATES_HTML_VIEW', False):
 # Access to courseware as an LTI provider
 if settings.FEATURES["ENABLE_LTI_PROVIDER"]:
     urlpatterns += (
-        url(r'^courses/{}/lti_provider/(?P<chapter>[^/]*)/(?P<section>[^/]*)/(?P<position>[^/]*)/?$'.format(settings.COURSE_ID_PATTERN),
+        url(r'^courses/{}/lti_launch/(?P<chapter>[^/]*)/(?P<section>[^/]*)/(?P<position>[^/]*)/?$'.format(settings.COURSE_ID_PATTERN),
             'lti_provider.views.lti_launch', name="lti_provider_launch"),
+    )
+    urlpatterns += (
+        url(r'^lti_provider/lti_run/',
+            'lti_provider.views.lti_run', name="lti_provider_run"),
     )
 
 urlpatterns = patterns(*urlpatterns)
