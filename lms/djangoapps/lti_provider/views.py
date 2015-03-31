@@ -1,11 +1,12 @@
 import courseware
 from django.conf import settings
-from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseForbidden
-from lti_provider.signature_validator import SignatureValidator
-from django.contrib.auth.views import redirect_to_login
 from django.contrib.auth import REDIRECT_FIELD_NAME
-from django.core.urlresolvers import reverse
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.views import redirect_to_login
+from django.core.urlresolvers import reverse
+from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseForbidden
+
+from lti_provider.signature_validator import SignatureValidator
 
 
 REQUIRED_PARAMETERS = [
@@ -26,7 +27,8 @@ def lti_launch(request, course_id, chapter=None, section=None, position=None):
 
     An LTI launch is successful if:
         - The launch contains all the required parameters
-        - The launch data is correctly signed using a known client key/secret pair
+        - The launch data is correctly signed using a known client key/secret
+          pair
         - The user is logged into the edX instance
 
     Authentication in this view is a little tricky, since clients use a POST
@@ -40,7 +42,7 @@ def lti_launch(request, course_id, chapter=None, section=None, position=None):
     the lti_run view. If the user is already logged in, we just call that view
     directly.
     """
-    if not settings.FEATURES["ENABLE_LTI_PROVIDER"]:
+    if not settings.FEATURES['ENABLE_LTI_PROVIDER']:
         return HttpResponseForbidden()
 
     # Check the OAuth signature on the message
@@ -53,10 +55,10 @@ def lti_launch(request, course_id, chapter=None, section=None, position=None):
     # Store the course, chapter, section and position in the session to prevent
     # privilege escalation if a staff member in one course tries to access
     # material in another.
-    params["course_id"] = course_id
-    params["chapter"] = chapter
-    params["section"] = section
-    params["position"] = position
+    params['course_id'] = course_id
+    params['chapter'] = chapter
+    params['section'] = section
+    params['position'] = position
     request.session[LTI_SESSION_KEY] = params
 
     if not request.user.is_authenticated():
@@ -123,6 +125,8 @@ def restore_params_from_session(request):
     :return: A dictionary of all LTI parameters from the session, or None if
              any parameters are missing.
     """
+    if LTI_SESSION_KEY not in request.session:
+        return None
     session_params = request.session[LTI_SESSION_KEY]
     additional_params = ['course_id', 'chapter', 'section', 'position']
     return get_required_parameters(session_params, additional_params)
@@ -139,4 +143,4 @@ def render_courseware(lti_params):
     :return: an HttpResponse object that contains the template and necessary
     context to render the courseware.
     """
-    return HttpResponse("TODO: Render refactored courseware view " + str(lti_params))
+    return HttpResponse('TODO: Render refactored courseware view ' + str(lti_params))

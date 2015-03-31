@@ -1,7 +1,9 @@
-from lti_provider.models import LtiConsumer
+from django.core.exceptions import ObjectDoesNotExist
 
 from oauthlib.oauth1 import SignatureOnlyEndpoint
 from oauthlib.oauth1 import RequestValidator
+
+from lti_provider.models import LtiConsumer
 
 
 class SignatureValidator(RequestValidator):
@@ -37,7 +39,7 @@ class SignatureValidator(RequestValidator):
 
         :return: True if the client key is valid, or False if it is not.
         """
-        return True
+        return key is not None and 0 < len(key) <= 32
 
     def check_nonce(self, nonce):
         """
@@ -49,7 +51,7 @@ class SignatureValidator(RequestValidator):
 
         :return: True if the OAuth nonce is valid, or False if it is not.
         """
-        return True
+        return nonce is not None and 0 < len(nonce) <= 64
 
     def validate_timestamp_and_nonce(self, client_key, timestamp, nonce,
                                      request, request_token=None,
@@ -84,10 +86,10 @@ class SignatureValidator(RequestValidator):
         :return: the client secret that corresponds to the supplied key if
         present, or None if the key does not exist in the database.
         """
-        consumer = LtiConsumer.objects.get(key=client_key)
-        if consumer:
-            return consumer.secret
-        return None
+        try:
+            return LtiConsumer.objects.get(key=client_key).secret
+        except ObjectDoesNotExist:
+            return None
 
 
     def verify(self, request):
