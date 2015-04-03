@@ -154,7 +154,8 @@ def render_courseware(request, lti_params):
     user = request.user
     course = get_course_with_access(user, 'load', course_key, depth=2)
     # usage_id = 'i4x:;_;_edX;_DemoX;_sequential;_basic_questions'
-    usage_id = 'i4x:;_;_edX;_DemoX;_problem;_c554538a57664fac80783b99d9d6da7c'
+    # usage_id = 'i4x:;_;_edX;_DemoX;_problem;_c554538a57664fac80783b99d9d6da7c'
+    usage_id = 'i4x:;_;_edX;_DemoX;_vertical;_vertical_0270f6de40fc'
     instance, _ = _get_module_by_usage_id(request, course_id, usage_id)
 
     # try:
@@ -163,11 +164,12 @@ def render_courseware(request, lti_params):
     #     log.exception("Attempt to render missing view on %s: %s", instance, 'student_view')
     #     raise Http404
 
-
-
     context = { 'fragment': fragment,
                 'course': course,
                 'disable_accordion': True,
+                'allow_iframing': True,
+                'disable_header': True,
+                'disable_footer': True,
                 }
 
     print str(context)
