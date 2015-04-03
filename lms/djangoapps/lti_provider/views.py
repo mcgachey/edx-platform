@@ -5,8 +5,13 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import redirect_to_login
 from django.core.urlresolvers import reverse
 from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseForbidden
+from django.shortcuts import render
 
+from courseware.module_render import _get_module_by_usage_id
+from courseware.views import get_course_with_access
+from edxmako.shortcuts import render_to_response
 from lti_provider.signature_validator import SignatureValidator
+from opaque_keys.edx.keys import CourseKey
 
 
 REQUIRED_PARAMETERS = [
@@ -94,9 +99,9 @@ def lti_run(request):
         # This view has been called without first setting the session
         return HttpResponseForbidden()
     # Remove the parameters from the session to prevent replay
-    del request.session[LTI_SESSION_KEY]
+    # del request.session[LTI_SESSION_KEY]
 
-    return render_courseware(params)
+    return render_courseware(request, params)
 
 
 def get_required_parameters(dictionary, additional_params=[]):
@@ -132,7 +137,7 @@ def restore_params_from_session(request):
     return get_required_parameters(session_params, additional_params)
 
 
-def render_courseware(lti_params):
+def render_courseware(request, lti_params):
     """
     Render the content requested for the LTI launch.
 
@@ -143,4 +148,28 @@ def render_courseware(lti_params):
     :return: an HttpResponse object that contains the template and necessary
     context to render the courseware.
     """
-    return HttpResponse('TODO: Render refactored courseware view ' + str(lti_params))
+
+    course_id = lti_params['course_id']
+    course_key = CourseKey.from_string(course_id)
+    user = request.user
+    course = get_course_with_access(user, 'load', course_key, depth=2)
+    # usage_id = 'i4x:;_;_edX;_DemoX;_sequential;_basic_questions'
+    usage_id = 'i4x:;_;_edX;_DemoX;_problem;_c554538a57664fac80783b99d9d6da7c'
+    instance, _ = _get_module_by_usage_id(request, course_id, usage_id)
+
+    # try:
+    fragment = instance.render('student_view', context=request.GET)
+    # except NoSuchViewError:
+    #     log.exception("Attempt to render missing view on %s: %s", instance, 'student_view')
+    #     raise Http404
+
+
+
+    context = { 'fragment': fragment,
+                'course': course,
+                'disable_accordion': True,
+                }
+
+    print str(context)
+
+    return render_to_response('courseware/courseware.html', context)

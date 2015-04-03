@@ -191,11 +191,13 @@ ${fragment.foot_html()}
 </div>
 % endif
 
-<%include file="/dashboard/_dashboard_prompt_midcourse_reverify.html" />
-% if default_tab:
-  <%include file="/courseware/course_navigation.html" />
-% else:
-  <%include file="/courseware/course_navigation.html" args="active_page='courseware'" />
+% if reverifications:
+    <%include file="/dashboard/_dashboard_prompt_midcourse_reverify.html" />
+    % if default_tab:
+      <%include file="/courseware/course_navigation.html" />
+    % else:
+      <%include file="/courseware/course_navigation.html" args="active_page='courseware'" />
+    % endif
 % endif
 
 <div class="container">
@@ -254,7 +256,7 @@ ${fragment.foot_html()}
             % endif
       % endif
 
-      ${fragment.body_html()}
+          ${fragment.body_html()}
     </section>
     % if settings.FEATURES.get('ENABLE_COURSEWARE_SEARCH'):
       <section class="courseware-search-results" id="courseware-search-results" data-course-id="${course.id}" data-course-name="${course.display_name_with_default}">
