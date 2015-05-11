@@ -6,21 +6,27 @@ from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import redirect_to_login
 from django.core.urlresolvers import reverse
-from django.http import HttpResponseBadRequest, HttpResponseForbidden
+from django.http import HttpResponseBadRequest, HttpResponseForbidden, Http404
 from django.views.decorators.csrf import csrf_exempt
 
 from courseware.access import has_access
 from courseware.courses import get_course_with_access
 from courseware.module_render import get_module_by_usage_id
 from edxmako.shortcuts import render_to_response
+from lti_provider.outcomes import store_outcome_parameters
 from lti_provider.signature_validator import SignatureValidator
-from opaque_keys.edx.keys import CourseKey
+from lti_provider.lti_utils import parse_course_and_usage_keys
 
 # LTI launch parameters that must be present for a successful launch
 REQUIRED_PARAMETERS = [
     'roles', 'context_id', 'oauth_version', 'oauth_consumer_key',
     'oauth_signature', 'oauth_signature_method', 'oauth_timestamp',
     'oauth_nonce'
+]
+
+OPTIONAL_PARAMETERS = [
+    'lis_result_sourcedid', 'lis_outcome_service_url',
+    'tool_consumer_instance_guid'
 ]
 
 LTI_SESSION_KEY = 'lti_provider_parameters'
@@ -61,11 +67,16 @@ def lti_launch(request, course_id, usage_id):
     params = get_required_parameters(request.POST)
     if not params:
         return HttpResponseBadRequest()
-    # Store the course, and usage ID in the session to prevent privilege
+    params.update(get_optional_parameters(request.POST))
+
+    # Store the course and usage keys in the session to prevent privilege
     # escalation if a staff member in one course tries to access material in
     # another.
-    params['course_id'] = course_id
-    params['usage_id'] = usage_id
+    course_key, usage_key = parse_course_and_usage_keys(course_id, usage_id)
+    if not course_key:
+        raise Http404('Invalid course or usage key')
+    params['course_key'] = course_key
+    params['usage_key'] = usage_key
     request.session[LTI_SESSION_KEY] = params
 
     if not request.user.is_authenticated():
@@ -102,6 +113,8 @@ def lti_run(request):
     # Remove the parameters from the session to prevent replay
     del request.session[LTI_SESSION_KEY]
 
+    store_outcome_parameters(params, request.user)
+
     return render_courseware(request, params)
 
 
@@ -127,6 +140,14 @@ def get_required_parameters(dictionary, additional_params=None):
     return params
 
 
+def get_optional_parameters(dictionary):
+    params = {}
+    for key in OPTIONAL_PARAMETERS:
+        if key in dictionary:
+            params[key] = dictionary[key]
+    return params
+
+
 def restore_params_from_session(request):
     """
     Fetch the parameters that were stored in the session by an LTI launch, and
@@ -140,8 +161,11 @@ def restore_params_from_session(request):
     if LTI_SESSION_KEY not in request.session:
         return None
     session_params = request.session[LTI_SESSION_KEY]
-    additional_params = ['course_id', 'usage_id']
-    return get_required_parameters(session_params, additional_params)
+    additional_params = ['course_key', 'usage_key']
+    for key in REQUIRED_PARAMETERS + additional_params:
+        if key not in session_params:
+            return None
+    return session_params
 
 
 def render_courseware(request, lti_params):
@@ -154,13 +178,12 @@ def render_courseware(request, lti_params):
     :return: an HttpResponse object that contains the template and necessary
     context to render the courseware.
     """
-    usage_id = lti_params['usage_id']
-    course_id = lti_params['course_id']
-    course_key = CourseKey.from_string(course_id)
+    usage_key = lti_params['usage_key']
+    course_key = lti_params['course_key']
     user = request.user
     course = get_course_with_access(user, 'load', course_key)
     staff = has_access(request.user, 'staff', course)
-    instance, _ = get_module_by_usage_id(request, course_id, usage_id)
+    instance, _ = get_module_by_usage_id(request, str(course_key), str(usage_key))
 
     fragment = instance.render('student_view', context=request.GET)
 
