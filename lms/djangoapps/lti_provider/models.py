@@ -52,7 +52,7 @@ def score_changed_handler(sender, **kwargs):  # pylint: disable=unused-argument
     course_id = kwargs.get('course_id', None)
     usage_id = kwargs.get('usage_id', None)
 
-    if all((points_possible, points_earned, user_id, course_id, user_id)):
+    if all((user_id, course_id, user_id)) and points_possible != None and points_earned != None:
         lti_provider.outcomes.send_outcome(
             points_possible,
             points_earned,

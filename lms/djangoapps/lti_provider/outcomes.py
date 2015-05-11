@@ -79,7 +79,7 @@ def store_outcome_parameters(request_params, user):
 
 def send_outcome(points_possible, points_earned, user_id, course_id, usage_id):
     course_key, usage_key = parse_course_and_usage_keys(course_id, usage_id)
-    if not all(course_key, usage_key):
+    if not all((course_key, usage_key)):
         log.error(
             "Outcome Service: Invalid course ID (%s) or usage ID (%s)",
             course_id, usage_id
