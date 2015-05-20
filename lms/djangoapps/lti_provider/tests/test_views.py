@@ -23,6 +23,12 @@ LTI_DEFAULT_PARAMS = {
     'oauth_nonce': u'OAuth Nonce',
 }
 
+LTI_OPTIONAL_PARAMS = {
+    'lis_result_sourcedid': u'result sourcedid',
+    'lis_outcome_service_url': u'outcome service URL',
+    'tool_consumer_instance_guid': u'consumer instance guid'
+}
+
 COURSE_KEY = CourseKey.from_string('some/course/id')
 USAGE_KEY = UsageKey.from_string('i4x://some/course/problem/uuid').map_into_course(COURSE_KEY)
 COURSE_PARAMS = {
@@ -77,6 +83,16 @@ class LtiLaunchTest(TestCase):
         views.lti_launch(request, unicode(COURSE_KEY), unicode(USAGE_KEY))
         render.assert_called_with(request, ALL_PARAMS)
 
+    @patch('lti_provider.views.render_courseware')
+    @patch('lti_provider.views.store_outcome_parameters')
+    def test_outcome_service_registered(self, store_params, _render):
+        """
+        Verifies that the LTI launch succeeds when passed a valid request.
+        """
+        request = build_launch_request()
+        views.lti_launch(request, str(COURSE_PARAMS['course_key']), str(COURSE_PARAMS['usage_key']))
+        store_params.assert_called_with(ALL_PARAMS, request.user)
+
     def launch_with_missing_parameter(self, missing_param):
         """
         Helper method to remove a parameter from the LTI launch and call the view
@@ -120,6 +136,29 @@ class LtiLaunchTest(TestCase):
         self.assertEqual(session['usage_key'], USAGE_KEY, 'Usage key not set in the session')
         for key in views.REQUIRED_PARAMETERS:
             self.assertEqual(session[key], request.POST[key], key + ' not set in the session')
+
+    @patch('lti_provider.views.lti_run')
+    def test_optional_parameters_in_session(self, _run):
+        """
+        Verifies that the outcome-related optional LTI parameters are properly
+        stored in the session
+        """
+        request = build_launch_request()
+        request.POST.update(LTI_OPTIONAL_PARAMS)
+        views.lti_launch(request, str(COURSE_PARAMS['course_key']), str(COURSE_PARAMS['usage_key']))
+        session = request.session[views.LTI_SESSION_KEY]
+        self.assertEqual(
+            session['lis_result_sourcedid'], u'result sourcedid',
+            'Result sourcedid not set in the session'
+        )
+        self.assertEqual(
+            session['lis_outcome_service_url'], u'outcome service URL',
+            'Outcome service URL not set in the session'
+        )
+        self.assertEqual(
+            session['tool_consumer_instance_guid'], u'consumer instance guid',
+            'Consumer instance GUID not set in the session'
+        )
 
     def test_redirect_for_non_authenticated_user(self):
         """

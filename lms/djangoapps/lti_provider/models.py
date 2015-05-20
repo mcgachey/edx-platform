@@ -8,10 +8,15 @@ changes. To do that,
 1. Go to the edx-platform dir
 2. ./manage.py lms schemamigration lti_provider --auto "description" --settings=devstack
 """
+from django.contrib.auth.models import User
 from django.db import models
 from django.dispatch import receiver
+import logging
 
 from courseware.models import SCORE_CHANGED
+from xmodule_django.models import CourseKeyField, UsageKeyField
+
+log = logging.getLogger("edx.lti_provider")
 
 
 class LtiConsumer(models.Model):
@@ -25,25 +30,69 @@ class LtiConsumer(models.Model):
     consumer_secret = models.CharField(max_length=32, unique=True)
 
 
+class OutcomeService(models.Model):
+    """
+    Model for a single outcome service associated with an LTI consumer. Note
+    that a given consumer may have more than one outcome service URL over its
+    lifetime, so we need to store the outcome service separately from the
+    LtiConsumer model.
+
+    An outcome service can be identified in two ways, depending on the
+    information provided by an LTI launch. The ideal way to identify the service
+    is by instance_guid, which should uniquely identify a consumer. However that
+    field is optional in the LTI launch, and so if it is missing we can fall
+    back on the consumer key (which should be created uniquely for each consumer
+    although we don't have a technical way to guarantee that).
+    """
+    lis_outcome_service_url = models.CharField(max_length=255)
+    instance_guid = models.CharField(max_length=255, null=True)
+    consumer_key = models.CharField(max_length=32, db_index=True)
+
+
+class GradedAssignment(models.Model):
+    """
+    Model representing a single launch of a graded assignment by an individual
+    user. There will be a row created here only if the LTI consumer may require
+    a result to be returned from the LTI launch (determined by the presence of
+    the lis_result_sourcedid parameter in the launch POST). There will be only
+    one row created for a given user/course/usage/consumer combination; repeated
+    launches of the same content by the same user from the same LTI consumer
+    will not add new rows to the table.
+    """
+    user = models.ForeignKey(User, db_index=True)
+    course_key = CourseKeyField(max_length=255, db_index=True)
+    usage_key = UsageKeyField(max_length=255, db_index=True)
+    outcome_service = models.ForeignKey(OutcomeService)
+    lis_result_sourcedid = models.CharField(max_length=255, db_index=True, unique=True)
+
+
+import lti_provider.tasks
+
+
 @receiver(SCORE_CHANGED)
 def score_changed_handler(sender, **kwargs):  # pylint: disable=unused-argument
     """
-    Consume signals that indicate score changes.
+    Consume signals that indicate score changes. See the definition of
+    courseware.models.SCORE_CHANGED for a description of the signal.
+    """
+    points_possible = kwargs.get('points_possible', None)
+    points_earned = kwargs.get('points_earned', None)
+    user_id = kwargs.get('user_id', None)
+    course_id = kwargs.get('course_id', None)
+    usage_id = kwargs.get('usage_id', None)
 
-    TODO: This function is a placeholder for integration with the LTI 1.1
-    outcome service, which will follow in a separate change.
-    """
-    message = """LTI Provider got score change event:
-        points_possible: {}
-        points_earned: {}
-        user_id: {}
-        course_id: {}
-        usage_id: {}
-    """
-    print message.format(
-        kwargs.get('points_possible', None),
-        kwargs.get('points_earned', None),
-        kwargs.get('user_id', None),
-        kwargs.get('course_id', None),
-        kwargs.get('usage_id', None),
-    )
+    if None not in (points_earned, points_possible, user_id, course_id, user_id):
+        lti_provider.tasks.send_outcome.delay(
+            points_possible,
+            points_earned,
+            user_id,
+            course_id,
+            usage_id
+        )
+    else:
+        log.error(
+            "Outcome Service: Required signal parameter is None. "
+            "points_possible: %s, points_earned: %s, user_id: %s, "
+            "course_id: %s, usage_id: %s",
+            points_possible, points_earned, user_id, course_id, usage_id
+        )
