@@ -6,6 +6,7 @@ in LTI v1.1.
 from django.core.exceptions import ObjectDoesNotExist
 import logging
 from lxml import etree
+from lxml.builder import ElementMaker
 import requests
 import requests_oauthlib
 import uuid
@@ -86,38 +87,38 @@ def store_outcome_parameters(request_params, user):
         )
 
 
-# Pylint doesn't recognize members in the LXML module
-# pylint: disable=no-member
 def generate_replace_result_xml(result_sourcedid, score):
     """
     Create the XML document that contains the new score to be sent to the LTI
     consumer. The format of this message is defined in the LTI 1.1 spec.
     """
-    envelope = etree.Element(
-        'imsx_POXEnvelopeRequest',
-        xmlns='http://www.imsglobal.org/services/ltiv1p1/xsd/imsoms_v1p0'
+    # Pylint doesn't recognize members in the LXML module
+    # pylint: disable=no-member
+    em = ElementMaker(nsmap={None: 'http://www.imsglobal.org/services/ltiv1p1/xsd/imsoms_v1p0'})
+    xml = em.imsx_POXEnvelopeRequest(
+        em.imsx_POXHeader(
+            em.imsx_POXRequestHeaderInfo(
+                em.imsx_version('V1.0'),
+                em.imsx_messageIdentifier(str(uuid.uuid4()))
+            ),
+            em.imsx_POXBody(
+                em.replaceResultRequest(
+                    em.resultRecord(
+                        em.sourcedGUID(
+                            em.sourcedId(result_sourcedid)
+                        ),
+                        em.result(
+                            em.resultScore(
+                                em.language('en'),
+                                em.textString(str(score))
+                            )
+                        )
+                    )
+                )
+            )
+        )
     )
-    header = etree.SubElement(envelope, 'imsx_POXHeader')
-    header_info = etree.SubElement(header, 'imsx_POXRequestHeaderInfo')
-    version = etree.SubElement(header_info, 'imsx_version')
-    message_id = etree.SubElement(header_info, 'imsx_messageIdentifier')
-    body = etree.SubElement(envelope, 'imsx_POXBody')
-    replace_result_request = etree.SubElement(body, 'replaceResultRequest')
-    result_record = etree.SubElement(replace_result_request, 'resultRecord')
-    sourced_guid = etree.SubElement(result_record, 'sourcedGUID')
-    sourced_id = etree.SubElement(sourced_guid, 'sourcedId')
-    result = etree.SubElement(result_record, 'result')
-    result_score = etree.SubElement(result, 'resultScore')
-    language = etree.SubElement(result_score, 'language')
-    text_string = etree.SubElement(result_score, 'textString')
-
-    version.text = 'V1.0'
-    message_id.text = str(uuid.uuid4())
-    sourced_id.text = result_sourcedid
-    language.text = 'en'
-    text_string.text = str(score)
-
-    return etree.tostring(envelope, xml_declaration=True, encoding='UTF-8')
+    return etree.tostring(xml, xml_declaration=True, encoding='UTF-8')
 
 
 def sign_and_send_replace_result(assignment, xml):
@@ -141,7 +142,7 @@ def sign_and_send_replace_result(assignment, xml):
             "Outcome Service: Can't retrieve consumer secret for key %s.",
             consumer_key
         )
-        return None
+        raise
 
     # Calculate the OAuth signature for the replace_result message.
     # TODO: According to the LTI spec, there should be an additional
@@ -174,16 +175,11 @@ def check_replace_result_response(response):
         )
         return False
 
-    # etree can't handle XML that declares character encoding. Strip off the
-    # <?xml...?> tag and replace it with one that etree can parse
-    xml = response.text
-    if xml.lower().startswith('<?xml'):
-        xml = '<?xml version="1.0"?>' + xml.split('?>', 1)[1]
-
     try:
+        xml = response.content
         root = etree.fromstring(xml)
     except etree.ParseError as ex:
-        log.error("Outcome service response: Failed to parse XML: %s", ex)
+        log.error("Outcome service response: Failed to parse XML: %s\n %s",ex, xml)
         return False
 
     major_codes = root.xpath(
@@ -196,4 +192,5 @@ def check_replace_result_response(response):
     if major_codes[0].text != 'success':
         log.error("Outcome service response: Unexpected major code: %s.", major_codes[0].text)
         return False
+
     return True

@@ -2,6 +2,7 @@
 Tests for the LTI outcome service handlers, both in outcomes.py and in tasks.py
 """
 
+from django.core.exceptions import ObjectDoesNotExist
 from django.test import TestCase
 from lxml import etree
 from mock import patch, MagicMock, ANY
@@ -171,8 +172,12 @@ class SignAndSendReplaceResultTest(TestCase):
 
     def test_with_no_consumer_secret(self):
         LtiConsumer.objects.all().delete()
-        response = outcomes.sign_and_send_replace_result(self.assignment, 'xml')
-        self.assertIsNone(response)
+        self.assertRaises(
+            ObjectDoesNotExist,
+            outcomes.sign_and_send_replace_result,
+            self.assignment,
+            'xml'
+        )
 
 
 class SendOutcomeTest(TestCase):
@@ -282,8 +287,6 @@ class SendOutcomeTest(TestCase):
         assert not self.replace_result_mock.called
 
 
-# Pylint doesn't recognize members in the LXML module
-# pylint: disable=no-member
 class XmlHandlingTest(TestCase):
     """
     Tests for the generate_replace_result_xml and check_replace_result_response
@@ -316,6 +319,8 @@ class XmlHandlingTest(TestCase):
 
     @patch('uuid.uuid4', return_value='random_uuid')
     def test_replace_result_message_uuid(self, _uuid_mock):
+        # Pylint doesn't recognize members in the LXML module
+        # pylint: disable=no-member
         xml = outcomes.generate_replace_result_xml(self.result_id, self.score)
         tree = etree.fromstring(xml)
         message_id = tree.xpath(
@@ -326,6 +331,7 @@ class XmlHandlingTest(TestCase):
         self.assertEqual(message_id[0].text, 'random_uuid')
 
     def test_replace_result_sourced_id(self):
+        # pylint: disable=no-member
         xml = outcomes.generate_replace_result_xml(self.result_id, self.score)
         tree = etree.fromstring(xml)
         sourced_id = tree.xpath(
@@ -336,6 +342,7 @@ class XmlHandlingTest(TestCase):
         self.assertEqual(sourced_id[0].text, 'result_id')
 
     def test_replace_result_score(self):
+        # pylint: disable=no-member
         xml = outcomes.generate_replace_result_xml(self.result_id, self.score)
         tree = etree.fromstring(xml)
         xml_score = tree.xpath(
@@ -354,7 +361,7 @@ class XmlHandlingTest(TestCase):
         """
         response = MagicMock()
         response.status_code = status
-        response.text = xml.format(major_code=major_code)
+        response.content = xml.format(major_code=major_code).encode('ascii','ignore')
         return response
 
     def test_response_with_correct_xml(self):
@@ -365,11 +372,6 @@ class XmlHandlingTest(TestCase):
     def test_response_with_bad_status_code(self):
         response = self.create_response_object(500, '')
         self.assertFalse(outcomes.check_replace_result_response(response))
-
-    def test_response_with_character_encoding(self):
-        xml = '<?XML version="1.0" encoding="UTF-8"?>' + self.response_xml
-        response = self.create_response_object(200, xml)
-        self.assertTrue(outcomes.check_replace_result_response(response))
 
     def test_response_with_invalid_xml(self):
         xml = '<badly>formatted</xml>'
