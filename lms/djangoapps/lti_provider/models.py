@@ -11,6 +11,10 @@ changes. To do that,
 from django.contrib.auth.models import User
 from django.db import models
 import logging
+from django.dispatch import receiver
+
+from courseware.models import SCORE_CHANGED
+
 
 from xmodule_django.models import CourseKeyField, UsageKeyField
 
@@ -76,3 +80,33 @@ class GradedAssignment(models.Model):
 
     class Meta:
         unique_together = ('outcome_service', 'lis_result_sourcedid')
+
+import lti_provider.tasks
+
+@receiver(SCORE_CHANGED)
+def score_changed_handler(sender, **kwargs):  # pylint: disable=unused-argument
+    """
+    Consume signals that indicate score changes. See the definition of
+    courseware.models.SCORE_CHANGED for a description of the signal.
+    """
+    points_possible = kwargs.get('points_possible', None)
+    points_earned = kwargs.get('points_earned', None)
+    user_id = kwargs.get('user_id', None)
+    course_id = kwargs.get('course_id', None)
+    usage_id = kwargs.get('usage_id', None)
+
+    if None not in (points_earned, points_possible, user_id, course_id, user_id):
+        lti_provider.tasks.send_outcome.delay(
+            points_possible,
+            points_earned,
+            user_id,
+            course_id,
+            usage_id
+        )
+    else:
+        log.error(
+            "Outcome Service: Required signal parameter is None. "
+            "points_possible: %s, points_earned: %s, user_id: %s, "
+            "course_id: %s, usage_id: %s",
+            points_possible, points_earned, user_id, course_id, usage_id
+        )

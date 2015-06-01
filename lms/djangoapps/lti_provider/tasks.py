@@ -7,41 +7,16 @@ from django.dispatch import receiver
 import logging
 
 from courseware.models import SCORE_CHANGED
+from courseware.module_render import get_module_by_usage_id
 from lms import CELERY_APP
 from lti_provider.models import GradedAssignment
 import lti_provider.outcomes
 from lti_provider.views import parse_course_and_usage_keys
+from xmodule.modulestore.django import modulestore
 
 log = logging.getLogger("edx.lti_provider")
 
 
-@receiver(SCORE_CHANGED)
-def score_changed_handler(sender, **kwargs):  # pylint: disable=unused-argument
-    """
-    Consume signals that indicate score changes. See the definition of
-    courseware.models.SCORE_CHANGED for a description of the signal.
-    """
-    points_possible = kwargs.get('points_possible', None)
-    points_earned = kwargs.get('points_earned', None)
-    user_id = kwargs.get('user_id', None)
-    course_id = kwargs.get('course_id', None)
-    usage_id = kwargs.get('usage_id', None)
-
-    if None not in (points_earned, points_possible, user_id, course_id, user_id):
-        lti_provider.tasks.send_outcome.delay(
-            points_possible,
-            points_earned,
-            user_id,
-            course_id,
-            usage_id
-        )
-    else:
-        log.error(
-            "Outcome Service: Required signal parameter is None. "
-            "points_possible: %s, points_earned: %s, user_id: %s, "
-            "course_id: %s, usage_id: %s",
-            points_possible, points_earned, user_id, course_id, usage_id
-        )
 
 
 @CELERY_APP.task
@@ -70,6 +45,23 @@ def send_outcome(points_possible, points_earned, user_id, course_id, usage_id):
             course_id, usage_id
         )
         return
+
+
+    descriptor = modulestore().get_item(usage_key)
+
+
+    # module, _dummy = get_module_by_usage_id(
+    #     request,
+    #     unicode(course_key),
+    #     unicode(usage_key)
+    # )
+    #
+    parent = descriptor.get_parent()
+    print "{}".format(descriptor.location)
+    while parent:
+        print "Parent: {}".format(parent.location)
+        parent = parent.get_parent()
+
 
     try:
         assignment = GradedAssignment.objects.get(
